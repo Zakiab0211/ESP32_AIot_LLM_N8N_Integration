@@ -1,0 +1,198 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        0
+      ],
+      "id": "93dbe2e1-3523-4698-bdb3-1440d775a77f",
+      "name": "Telegram Trigger",
+      "webhookId": "57066982-dc58-489d-adb8-ecc5d3725fe1",
+      "credentials": {
+        "telegramApi": {
+          "id": "k1kUO2owSlHwaC0U",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -48,
+        0
+      ],
+      "id": "8882ae4f-c913-4dfb-b69f-0dadd2f9ef6d",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        208
+      ],
+      "id": "d83b5672-7d39-4a25-b05e-2cacada254ca",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "SXnBPFe2KB09mSBm",
+          "name": "my LLM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        0
+      ],
+      "id": "627a92f8-0db5-4022-be11-f5f875e457c3",
+      "name": "Send a text message",
+      "webhookId": "1eb3510b-c62e-4c8e-b950-8739c13e2d44",
+      "credentials": {
+        "telegramApi": {
+          "id": "k1kUO2owSlHwaC0U",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.from.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        16,
+        208
+      ],
+      "id": "fed8b8d3-6e23-4e1e-9df1-481d32bbf84c",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1mZoj-Bt5zl3SBJZlYc79sbYEnjA2am-7tyqagrzNwMk",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ESP32 DATA",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        224
+      ],
+      "id": "a8b71675-16df-4d6a-be70-21c0d87bf498",
+      "name": "Get row(s) in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "uTMZfagEcn9lMUb2",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "62e5401a-0acc-412c-84af-a399a1ad6e48",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c11f90031ebf848faa6305efafb31399b821e3b0cca1a53da8434f54540344e5"
+  },
+  "id": "let3nvldLlNCb16M",
+  "tags": []
+}

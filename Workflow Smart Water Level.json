@@ -1,0 +1,413 @@
+{
+  "name": "Smart Water Level",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "Kamu adalah asisten virtual saya yang bertugas untuk membantu menganalisis data sensor dari perangkat IoT yang ada di spreadsheet saya. Data yang dianalisis terdiri dari data ketinggian (cm) dan status (Aman, Siaga, Darurat)."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -1296,
+        0
+      ],
+      "id": "370d5c52-90ac-4827-a475-9ccd380af4b8",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1504,
+        0
+      ],
+      "id": "3ea6949c-37c2-4b65-ad01-dd4fa8af43d4",
+      "name": "Chat from user",
+      "webhookId": "b508db33-0262-44b4-b72d-d79935fa6ee2",
+      "credentials": {
+        "telegramApi": {
+          "id": "Ywv501vms63Sa3G8",
+          "name": "myrizky_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1hXyTR56qVIPWH52sMWP6pEJJEbWZgj80jU51MmlcjKk",
+          "mode": "list",
+          "cachedResultName": "data sensor",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hXyTR56qVIPWH52sMWP6pEJJEbWZgj80jU51MmlcjKk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hXyTR56qVIPWH52sMWP6pEJJEbWZgj80jU51MmlcjKk/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        -1056,
+        192
+      ],
+      "id": "8eb14a40-289e-4771-a758-dccd55aa320c",
+      "name": "get data sensor",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ATJVAVxCDmjWfmly",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Chat from user').item.json.message.from.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -976,
+        0
+      ],
+      "id": "b97c2025-b9fd-430d-a1f8-27b19b1a42b7",
+      "name": "reply from chatbot",
+      "webhookId": "d3604bec-50f5-4f0d-bdcb-8e7ea7388e7f",
+      "credentials": {
+        "telegramApi": {
+          "id": "Ywv501vms63Sa3G8",
+          "name": "myrizky_bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1392,
+        192
+      ],
+      "id": "cb587c95-aad6-4069-9624-60939ad2b749",
+      "name": "gemini chatbot",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KBXW4rwATcDTo9cx",
+          "name": "gemini model"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Chat from user').item.json.message.chat.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -1232,
+        208
+      ],
+      "id": "77abd4e3-4eb6-476a-b691-ca1fb11b511d",
+      "name": "chat memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const waterlevel = Number($input.first().json.message);\n\nconst dataState = $getWorkflowStaticData('global');\nif (!dataState.alertState) dataState.alertState = \"Aman\";\n\nlet newState = \"Aman\";\nlet emoji = \"✅\";\n\nif (waterlevel >= 90) {\n  newState = \"Darurat\"; emoji = \"🚨\";\n} else if (waterlevel >= 70) {\n  newState = \"Siaga\"; emoji = \"⚠️\";\n}\n\nlet alert = null;\nif (newState !== dataState.alertState) {\n  dataState.alertState = newState;\n  alert = `Ketinggian air saat ini: ${waterlevel} cm\\nStatus: ${newState} ${emoji}`;\n}\n\nreturn [{\n  alert,\n  db: {\n    waterlevel,\n    status: `${emoji} ${newState}`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        0
+      ],
+      "id": "8326f86c-e47d-48aa-935c-55a2a307d1ba",
+      "name": "Rules"
+    },
+    {
+      "parameters": {
+        "topics": "iot/esp32-waterlevel",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mqttTrigger",
+      "typeVersion": 1,
+      "position": [
+        -768,
+        0
+      ],
+      "id": "c8d10f4e-f38b-44f6-b782-decf25594dd1",
+      "name": "ESP32",
+      "credentials": {
+        "mqtt": {
+          "id": "QpwWynXgYVVmzEgm",
+          "name": "my_mqtt"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "212ba91e-c90c-4f17-9fc2-a7cc84076c6f",
+              "leftValue": "={{ $json.alert }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -352,
+        -80
+      ],
+      "id": "af98087d-1238-47b5-95bd-477f12aa28bc",
+      "name": "If Alert?"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1hXyTR56qVIPWH52sMWP6pEJJEbWZgj80jU51MmlcjKk",
+          "mode": "list",
+          "cachedResultName": "data sensor",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hXyTR56qVIPWH52sMWP6pEJJEbWZgj80jU51MmlcjKk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hXyTR56qVIPWH52sMWP6pEJJEbWZgj80jU51MmlcjKk/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ (() => {\n  const now = new Date();\n  const options = { \n    timeZone: 'Asia/Jakarta',\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n    hour: '2-digit',\n    minute: '2-digit',\n    second: '2-digit',\n    hour12: false \n  };\n\n  const parts = new Intl.DateTimeFormat('en-CA', options).formatToParts(now);\n\n  const date = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;\n  const time = `${parts.find(p => p.type === 'hour').value}:${parts.find(p => p.type === 'minute').value}:${parts.find(p => p.type === 'second').value}`;\n\n  return `${date} ${time}`;\n})() }}\n",
+            "Water Level (cm)": "={{ $json.db.waterlevel }}",
+            "Status": "={{ $json.db.status }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Water Level (cm)",
+              "displayName": "Water Level (cm)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -352,
+        144
+      ],
+      "id": "259c3556-a190-4dec-b20b-ace2c38299bd",
+      "name": "store data",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ATJVAVxCDmjWfmly",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "441884684",
+        "text": "={{ $json.alert }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -96,
+        -96
+      ],
+      "id": "4e1f562e-2b66-4d03-8097-aeee61b738f0",
+      "name": "Send Alert",
+      "webhookId": "82bc9aa9-8bd0-4fe5-a87c-37156edb9a09",
+      "credentials": {
+        "telegramApi": {
+          "id": "Ywv501vms63Sa3G8",
+          "name": "myrizky_bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "reply from chatbot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat from user": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get data sensor": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gemini chatbot": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "chat memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rules": {
+      "main": [
+        [
+          {
+            "node": "If Alert?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "store data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ESP32": {
+      "main": [
+        [
+          {
+            "node": "Rules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Alert?": {
+      "main": [
+        [
+          {
+            "node": "Send Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "store data": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6d4d798a-deba-4b4e-8863-1543ec805a7b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0a11ac53d4384d628a0a327ef5770acd50edc453a43458ba6aa77059f2ea1789"
+  },
+  "id": "ifKCCjvae5Nvt0xQ",
+  "tags": []
+}

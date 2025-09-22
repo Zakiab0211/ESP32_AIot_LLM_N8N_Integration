@@ -1,0 +1,27 @@
+const waterlevel = Number($input.first().json.message);
+
+const dataState = $getWorkflowStaticData('global');
+if (!dataState.alertState) dataState.alertState = "Aman";
+
+let newState = "Aman";
+let emoji = "✅";
+
+if (waterlevel >= 90) {
+  newState = "Darurat"; emoji = "🚨";
+} else if (waterlevel >= 70) {
+  newState = "Siaga"; emoji = "⚠️";
+}
+
+let alert = null;
+if (newState !== dataState.alertState) {
+  dataState.alertState = newState;
+  alert = `Ketinggian air saat ini: ${waterlevel} cm\nStatus: ${newState} ${emoji}`;
+}
+
+return [{
+  alert,
+  db: {
+    waterlevel,
+    status: `${emoji} ${newState}`
+  }
+}];
